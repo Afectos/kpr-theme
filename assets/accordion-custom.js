@@ -1,23 +1,20 @@
 import { mediaQueryLarge, isMobileBreakpoint } from '@theme/utilities';
 
-// Accordion
 class AccordionCustom extends HTMLElement {
-  /** @type {HTMLDetailsElement} */
   get details() {
     const details = this.querySelector('details');
-
     if (!(details instanceof HTMLDetailsElement)) throw new Error('Details element not found');
-
     return details;
   }
 
-  /** @type {HTMLElement} */
   get summary() {
     const summary = this.details.querySelector('summary');
-
     if (!(summary instanceof HTMLElement)) throw new Error('Summary element not found');
-
     return summary;
+  }
+
+  get content() {
+    return this.details.querySelector('.accordion-content');
   }
 
   get #disableOnMobile() {
@@ -42,41 +39,28 @@ class AccordionCustom extends HTMLElement {
     this.addEventListener('keydown', this.#handleKeyDown, { signal });
     this.summary.addEventListener('click', this.handleClick, { signal });
     mediaQueryLarge.addEventListener('change', this.#handleMediaQueryChange, { signal });
+
+    this.details.addEventListener('toggle', () => this.#animate());
   }
 
-  /**
-   * Handles the disconnect event.
-   */
   disconnectedCallback() {
-    // Disconnect all the event listeners
     this.#controller.abort();
   }
 
-  /**
-   * Handles the click event.
-   * @param {Event} event - The event.
-   */
   handleClick = (event) => {
     const isMobile = isMobileBreakpoint();
     const isDesktop = !isMobile;
 
-    // Stop default behaviour from the browser
     if ((isMobile && this.#disableOnMobile) || (isDesktop && this.#disableOnDesktop)) {
       event.preventDefault();
       return;
     }
   };
 
-  /**
-   * Handles the media query change event.
-   */
   #handleMediaQueryChange = () => {
     this.#setDefaultOpenState();
   };
 
-  /**
-   * Sets the default open state of the accordion based on the `open-by-default-on-mobile` and `open-by-default-on-desktop` attributes.
-   */
   #setDefaultOpenState() {
     const isMobile = isMobileBreakpoint();
 
@@ -85,18 +69,36 @@ class AccordionCustom extends HTMLElement {
       (!isMobile && this.hasAttribute('open-by-default-on-desktop'));
   }
 
-  /**
-   * Handles keydown events for the accordion
-   *
-   * @param {KeyboardEvent} event - The keyboard event.
-   */
   #handleKeyDown(event) {
-    // Close the accordion when used as a menu
     if (event.key === 'Escape' && this.#closeWithEscape) {
       event.preventDefault();
-
       this.details.open = false;
       this.summary.focus();
+    }
+  }
+
+  // 🔥 NUEVO: Animación suave
+  #animate() {
+    const content = this.content;
+    if (!content) return;
+
+    if (this.details.open) {
+      content.style.height = '0px';
+      content.style.opacity = '0';
+
+      requestAnimationFrame(() => {
+        content.style.transition = 'all 0.3s ease';
+        content.style.height = content.scrollHeight + 'px';
+        content.style.opacity = '1';
+      });
+    } else {
+      content.style.height = content.scrollHeight + 'px';
+
+      requestAnimationFrame(() => {
+        content.style.transition = 'all 0.25s ease';
+        content.style.height = '0px';
+        content.style.opacity = '0';
+      });
     }
   }
 }
